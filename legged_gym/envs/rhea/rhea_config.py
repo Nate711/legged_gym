@@ -41,7 +41,10 @@ class RheaRoughCfg( LeggedRobotCfg ):
             'left_knee': 0.0,   # [rad]
             'left_wheel': 0.0 ,  # [rad]
         }
-
+    class terrain( LeggedRobotCfg.terrain ):
+        mesh_type = 'trimesh'
+        # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
+        terrain_proportions = [0.0, 0.0, 1.0, 0.0, 0.0]
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
         control_type = 'P'
