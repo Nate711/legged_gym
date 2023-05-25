@@ -41,7 +41,7 @@ from typing import Tuple, Dict
 
 from legged_gym.envs import LeggedRobot
 from legged_gym import LEGGED_GYM_ROOT_DIR
-from rhea_config import RheaRoughCfg
+from .rhea_config import RheaRoughCfg
 
 class Rhea(LeggedRobot):
     cfg : RheaRoughCfg
