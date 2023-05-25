@@ -51,6 +51,14 @@ class RheaRoughCfg( LeggedRobotCfg ):
         action_scale = 0.25
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 4
+        joint_control_types = {
+            'right_hip': 'P',
+            'right_knee': 'P',
+            'right_wheel': 'V',
+            'left_hip': 'P',
+            'left_knee': 'P',
+            'left_wheel': 'V',
+        }
 
     class asset( LeggedRobotCfg.asset ):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/rhea/urdf/rhea.urdf'
