@@ -84,5 +84,3 @@ class RheaRoughCfgPPO( LeggedRobotCfgPPO ):
     class runner( LeggedRobotCfgPPO.runner ):
         run_name = ''
         experiment_name = 'rough_rhea'
-
-  
