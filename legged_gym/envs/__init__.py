@@ -50,4 +50,4 @@ task_registry.register( "anymal_c_flat", Anymal, AnymalCFlatCfg(), AnymalCFlatCf
 task_registry.register( "anymal_b", Anymal, AnymalBRoughCfg(), AnymalBRoughCfgPPO() )
 task_registry.register( "a1", LeggedRobot, A1RoughCfg(), A1RoughCfgPPO() )
 task_registry.register( "cassie", Cassie, CassieRoughCfg(), CassieRoughCfgPPO() )
-task_registry.register( "rhea", Cassie, RheaRoughCfg(), RheaRoughCfgPPO() )
+task_registry.register( "rhea", Rhea, RheaRoughCfg(), RheaRoughCfgPPO() )
