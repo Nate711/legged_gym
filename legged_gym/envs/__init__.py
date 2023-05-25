@@ -38,6 +38,7 @@ from .anymal_b.anymal_b_config import AnymalBRoughCfg, AnymalBRoughCfgPPO
 from .cassie.cassie import Cassie
 from .cassie.cassie_config import CassieRoughCfg, CassieRoughCfgPPO
 from .a1.a1_config import A1RoughCfg, A1RoughCfgPPO
+from .rhea.rhea import Rhea
 from .rhea.rhea_config import RheaRoughCfg, RheaRoughCfgPPO
 
 
