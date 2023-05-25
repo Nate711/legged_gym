@@ -63,7 +63,7 @@ class Rhea(LeggedRobot):
 
     def _compute_torques(self, actions):
         actions_scaled = actions * self.cfg.control.action_scale
-        print(f'first exp: {np.shape(actions_scaled + self.default_dof_pos - self.dof_pos)}, self.p_gains: {self.p_gains}, self.d_gains: {np.shape(self.d_gains)}, self.dof_vel {np.shape(self.dof_vel)}')
+        print(f'first exp: {np.shape(actions_scaled)} default_dof_pos: {np.shape(self.default_dof_pos)} dof_pos: {np.shape(self.dof_pos)}, self.p_gains: {self.p_gains}, self.d_gains: {np.shape(self.d_gains)}, self.dof_vel {np.shape(self.dof_vel)}')
         position_torques = self.p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel
         velocity_torques = self.p_gains*(actions_scaled - self.dof_vel) - self.d_gains*(self.dof_vel - self.last_dof_vel)/self.sim_params.dt
         torques = position_torques + velocity_torques
