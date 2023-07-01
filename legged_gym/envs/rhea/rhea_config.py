@@ -101,36 +101,36 @@ class RheaRoughCfg( LeggedRobotCfg ):
         replace_cylinder_with_capsule = False
   
     class rewards( LeggedRobotCfg.rewards ):
-        # soft_dof_pos_limit = 0.9
-        # base_height_target = 0.4
-        only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
+    #     # soft_dof_pos_limit = 0.9
+    #     # base_height_target = 0.4
+    #     only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
         class scales( LeggedRobotCfg.rewards.scales ):
-            no_fly = 0.1
-            stand_still = -0.1
-            # alive = 1.0
-            # termination = -200.
-            tracking_ang_vel = 0.5
-            torques = -5.e-6
-            dof_acc = -2.e-7
-            lin_vel_z = -0.5
+    #         no_fly = 0.1
+            # stand_still = -1.0
+    #         # alive = 1.0
+    #         # termination = -200.
+    #         tracking_ang_vel = 0.5
+    #         torques = -5.e-6
+    #         dof_acc = -2.e-7
+    #         lin_vel_z = -0.5
             feet_air_time = 0.
-            orientation = -1.0
+    #         orientation = -1.0
             base_height = -100.0
-            # dof_pos_limits = -1.
-            dof_vel = -2.e-6
-            # ang_vel_xy = -0.0
-            # feet_contact_forces = -0.
-            # action_rate = -0.01
+    #         # dof_pos_limits = -1.
+    #         dof_vel = -2.e-6
+    #         # ang_vel_xy = -0.0
+    #         # feet_contact_forces = -0.
+    #         # action_rate = -0.01
 
     class commands( LeggedRobotCfg.commands ):
         num_commands = 3# default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         resampling_time = 10. # time before command are changed[s]
         heading_command = False
         class ranges:
-            # lin_vel_x = [-0.5, 0.5] #[-1.0, 1.0] # min max [m/s]
+            lin_vel_x = [-0.5, 0.5] #[-1.0, 1.0] # min max [m/s]
             lin_vel_x = [0.0, 0.0] # min max [m/s]
             lin_vel_y = [0.0, 0.0]   # min max [m/s]
-            ang_vel_yaw  = [0, 0] #[-0.25, 0.25]    # min max [rad/s]
+            ang_vel_yaw  = [-0.25, 0.25]    # min max [rad/s]
             # ang_vel_yaw  =[0.0, 0.0]    # min max [rad/s]
             heading = [0.0, 0.0]
 
@@ -139,9 +139,14 @@ class RheaRoughCfg( LeggedRobotCfg ):
         friction_range = [0.5, 1.5] #[0.75, 1.25]
         randomize_base_mass = True
         added_mass_range = [-0.5, 0.5]
+        randomize_base_com = False
+        added_com_range_x = [-0.1, 0.1]
+        added_com_range_y = [-0.1, 0.1]
+        added_com_range_z = [-0.1, 0.1]
+        randomize_gripper_mass = False
         push_robots = False
         push_interval_s = 15
-        max_push_vel_xy = 0.
+        max_push_vel_xy = 0.1
 
     class sim:
         dt =  0.005

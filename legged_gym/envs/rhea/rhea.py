@@ -57,16 +57,16 @@ ACTION_SCALE_POS = 1.0
 ACTION_SCALE_VEL = 1.0
 
 ACTION_SCALES = [ACTION_SCALE_POS, ACTION_SCALE_VEL, ACTION_SCALE_POS, ACTION_SCALE_VEL]
-DEFAULT_DOF_POS = torch.tensor([-0.3, 0.0, -0.3, 0.0], dtype=torch.float32, device='cuda')
+DEFAULT_DOF_POS = torch.tensor([-0.3, 0.0, -0.3, 0.0], dtype=torch.float, device="cuda")
 
-ACTION_MIN = torch.tensor(ACTION_MIN, dtype=torch.float32, device='cuda')
-ACTION_MAX = torch.tensor(ACTION_MAX, dtype=torch.float32, device='cuda')
+ACTION_MIN = torch.tensor(ACTION_MIN, dtype=torch.float, device="cuda")
+ACTION_MAX = torch.tensor(ACTION_MAX, dtype=torch.float, device="cuda")
 
-ACTION_SCALES = torch.tensor(ACTION_SCALES, dtype=torch.float32, device='cuda')
+ACTION_SCALES = torch.tensor(ACTION_SCALES, dtype=torch.float, device="cuda")
 
 RESET_PROJECTED_GRAVITY_Z = np.cos(0.52) # Pitch/roll angle to trigger resets
 
-PITCH_OFFSET_RANGE = [-0.05, 0.05]
+PITCH_OFFSET_RANGE = [0.0, 0.0] #[-0.05, 0.05]
 
 class Rhea(LeggedRobot):
     cfg : RheaRoughCfg
@@ -128,6 +128,54 @@ class Rhea(LeggedRobot):
         # add noise if needed
         if self.add_noise:
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
+
+    def _process_rigid_body_props(self, props, env_id):
+            if self.cfg.domain_rand.randomize_base_mass:
+                rng_mass = self.cfg.domain_rand.added_mass_range
+                rand_mass = np.random.uniform(rng_mass[0], rng_mass[1], size=(1, ))
+                props[0].mass += rand_mass
+            else:
+                rand_mass = np.zeros(1)
+            if self.cfg.domain_rand.randomize_gripper_mass:
+                gripper_rng_mass = self.cfg.domain_rand.gripper_added_mass_range
+                gripper_rand_mass = np.random.uniform(gripper_rng_mass[0], gripper_rng_mass[1], size=(1, ))
+                props[self.gripper_idx].mass += gripper_rand_mass
+            else:
+                gripper_rand_mass = np.zeros(1)
+            if self.cfg.domain_rand.randomize_base_com:
+                rng_com_x = self.cfg.domain_rand.added_com_range_x
+                rng_com_y = self.cfg.domain_rand.added_com_range_y
+                rng_com_z = self.cfg.domain_rand.added_com_range_z
+                rand_com = np.random.uniform([rng_com_x[0], rng_com_y[0], rng_com_z[0]], [rng_com_x[1], rng_com_y[1], rng_com_z[1]], size=(3, ))
+                props[0].com += gymapi.Vec3(*rand_com)
+            else:
+                rand_com = np.zeros(3)
+            mass_params = np.concatenate([rand_mass, rand_com, gripper_rand_mass])
+            return props
+
+    def _get_noise_scale_vec(self, cfg):
+        """ Sets a vector used to scale the noise added to the observations.
+            [NOTE]: Must be adapted when changing the observations structure
+
+        Args:
+            cfg (Dict): Environment config file
+
+        Returns:
+            [torch.Tensor]: Vector of scales used to multiply a uniform distribution in [-1, 1]
+        """
+        noise_vec = torch.zeros_like(self.obs_buf[0])
+        self.add_noise = self.cfg.noise.add_noise
+        noise_scales = self.cfg.noise.noise_scales
+        noise_level = self.cfg.noise.noise_level
+        noise_vec[:3] = noise_scales.ang_vel * noise_level * self.obs_scales.ang_vel
+        noise_vec[3:6] = noise_scales.gravity * noise_level
+        noise_vec[6:9] = 0. # commands
+        noise_vec[9:13] = noise_scales.dof_pos * noise_level * self.obs_scales.dof_pos
+        noise_vec[13:17] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
+        noise_vec[17:21] = 0. # previous actions
+        if self.cfg.terrain.measure_heights:
+            noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
+        return noise_vec
 
     def _reward_no_fly(self):
         contacts = self.contact_forces[:, self.feet_indices, 2] > 0.1
