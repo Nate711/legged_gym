@@ -45,7 +45,6 @@ from .rhea_config import RheaRoughCfg
 
 NUM_ACTUATORS = 4
 NUM_PHYSICAL_JOINTS = 6
-KNEE_TO_HIP_TORQUE_RATIO = -0.5
 
 MIN_LEG_POS = -0.35
 MAX_LEG_POS = -0.15
@@ -56,17 +55,17 @@ ACTION_MAX = [MAX_LEG_POS, MAX_WHEEL_VEL, MAX_LEG_POS, MAX_WHEEL_VEL]
 ACTION_SCALE_POS = 1.0
 ACTION_SCALE_VEL = 1.0
 
-ACTION_SCALES = [ACTION_SCALE_POS, ACTION_SCALE_VEL, ACTION_SCALE_POS, ACTION_SCALE_VEL]
-DEFAULT_DOF_POS = torch.tensor([-0.3, 0.0, -0.3, 0.0], dtype=torch.float, device="cuda")
+# ACTION_SCALES = [ACTION_SCALE_POS, ACTION_SCALE_VEL, ACTION_SCALE_POS, ACTION_SCALE_VEL]
+DEFAULT_DOF_POS = torch.tensor([-0.25, 0.0, -0.25, 0.0], dtype=torch.float, device="cuda", requires_grad=False)
 
-ACTION_MIN = torch.tensor(ACTION_MIN, dtype=torch.float, device="cuda")
-ACTION_MAX = torch.tensor(ACTION_MAX, dtype=torch.float, device="cuda")
+ACTION_MIN = torch.tensor(ACTION_MIN, dtype=torch.float, device="cuda", requires_grad=False)
+ACTION_MAX = torch.tensor(ACTION_MAX, dtype=torch.float, device="cuda", requires_grad=False)
 
-ACTION_SCALES = torch.tensor(ACTION_SCALES, dtype=torch.float, device="cuda")
+# ACTION_SCALES = torch.tensor(ACTION_SCALES, dtype=torch.float, device="cuda")
 
-RESET_PROJECTED_GRAVITY_Z = np.cos(0.52) # Pitch/roll angle to trigger resets
+RESET_PROJECTED_GRAVITY_Z = np.cos(0.79) # Pitch/roll angle to trigger resets
 
-PITCH_OFFSET_RANGE = [0.0, 0.0] #[-0.05, 0.05]
+# PITCH_OFFSET_RANGE = [0.0, 0.0] #[-0.05, 0.05]
 
 class Rhea(LeggedRobot):
     cfg : RheaRoughCfg
@@ -78,7 +77,14 @@ class Rhea(LeggedRobot):
         self.position_joints = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
         self.velocity_joints = torch.zeros(self.num_dof, dtype=torch.float, device=self.device, requires_grad=False)
 
-        self.pitch_offsets = torch_rand_float(PITCH_OFFSET_RANGE[0], PITCH_OFFSET_RANGE[1], (self.num_envs, 1), device=self.device)#.squeeze(1)
+        # self.pitch_offsets = torch_rand_float(PITCH_OFFSET_RANGE[0], PITCH_OFFSET_RANGE[1], (self.num_envs, 1), device=self.device)#.squeeze(1)
+
+        self.action_scales = torch.tensor([ACTION_SCALE_POS, ACTION_SCALE_VEL, ACTION_SCALE_POS, ACTION_SCALE_VEL], dtype=torch.float, device="cuda", requires_grad=False)
+
+        self.command_lower_bound = torch.tensor([self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_y"][0], self.command_ranges["ang_vel_yaw"][0]], dtype=torch.float, device="cuda", requires_grad=False)
+        self.command_upper_bound = torch.tensor([self.command_ranges["lin_vel_x"][1], self.command_ranges["lin_vel_y"][1], self.command_ranges["ang_vel_yaw"][1]], dtype=torch.float, device="cuda", requires_grad=False)
+        # self.command_lower_bound = torch.tensor([self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_y"][0]], dtype=torch.float, device="cuda", requires_grad=False)
+        # self.command_upper_bound = torch.tensor([self.command_ranges["lin_vel_x"][1], self.command_ranges["lin_vel_y"][1]], dtype=torch.float, device="cuda", requires_grad=False)
 
         for i in range(self.num_dofs):
             name = self.dof_names[i]
@@ -100,22 +106,10 @@ class Rhea(LeggedRobot):
     def compute_observations(self):
         """ Computes observations
         """
-        # self.obs_buf = torch.cat((  self.base_lin_vel * self.obs_scales.lin_vel,
-        #                             self.base_ang_vel  * self.obs_scales.ang_vel,
-        #                             self.projected_gravity,
-        #                             self.commands[:, :3] * self.commands_scale,
-        #                             (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,
-        #                             self.dof_vel * self.obs_scales.dof_vel,
-        #                             self.actions
-        #                             ),dim=-1)
-
-        actions_clipped = torch.clamp(self.actions, (ACTION_MIN - DEFAULT_DOF_POS) / ACTION_SCALES, (ACTION_MAX - DEFAULT_DOF_POS) / ACTION_SCALES)
-        # actions_clipped = self.actions
+        actions_clipped = torch.clamp(self.actions, (ACTION_MIN - DEFAULT_DOF_POS) / self.action_scales, (ACTION_MAX - DEFAULT_DOF_POS) / self.action_scales)
 
         self.obs_buf = torch.cat((  self.base_ang_vel  * self.obs_scales.ang_vel,
-                                    torch.cos(self.pitch_offsets) * self.projected_gravity[:, :1] - torch.sin(self.pitch_offsets) * self.projected_gravity[:, 2:],
-                                    self.projected_gravity[:, 1:2],
-                                    torch.sin(self.pitch_offsets) * self.projected_gravity[:, :1] + torch.cos(self.pitch_offsets) * self.projected_gravity[:, 2:],
+                                    self.projected_gravity,
                                     self.commands[:, :3] * self.commands_scale,
                                     self.position_joints * (self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,
                                     self.dof_vel * self.obs_scales.dof_vel,
@@ -128,6 +122,47 @@ class Rhea(LeggedRobot):
         # add noise if needed
         if self.add_noise:
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
+
+    def _resample_commands(self, env_ids):
+        """ Randommly select commands of some environments
+
+        Args:
+            env_ids (List[int]): Environments ids for which new commands are needed
+        """
+        self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_x"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+        self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+        if self.cfg.commands.heading_command:
+            self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+        else:
+            self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+        # Remapping small commands to zero:
+        upper_bound = self.command_upper_bound
+        lower_bound = self.command_lower_bound
+        deadband = self.cfg.commands.deadband
+
+        # Compute the absolute values
+        abs_commands = torch.abs(self.commands[env_ids, :])
+
+        # Create masks for values within the deadband
+        mask_within_deadband = (abs_commands <= deadband)
+
+        # For values within deadband, simply set them to 0
+        self.commands[env_ids, :] = torch.where(mask_within_deadband, torch.zeros_like(self.commands[env_ids, :]), self.commands[env_ids, :])
+
+        # Create masks for values outside the deadband
+        mask_outside_deadband = ~mask_within_deadband
+
+        # Calculate scale factors for remapping
+        upper_scale = (upper_bound - deadband) / (upper_bound - deadband)
+        lower_scale = (lower_bound + deadband) / (lower_bound + deadband)
+
+        # Create masks for values greater than deadband and less than -deadband
+        mask_greater_deadband = self.commands[env_ids, :] > deadband
+        mask_less_neg_deadband = self.commands[env_ids, :] < -deadband
+
+        # Remap the values
+        self.commands[env_ids, :] = torch.where(mask_greater_deadband, (self.commands[env_ids, :] - deadband) * upper_scale, self.commands[env_ids, :])
+        self.commands[env_ids, :] = torch.where(mask_less_neg_deadband, (self.commands[env_ids, :] + deadband) * lower_scale, self.commands[env_ids, :])
 
     def _process_rigid_body_props(self, props, env_id):
             if self.cfg.domain_rand.randomize_base_mass:
@@ -196,7 +231,7 @@ class Rhea(LeggedRobot):
     def _compute_torques(self, actions):
         
         # actions_clipped = actions
-        actions_clipped = torch.clamp(actions, (ACTION_MIN - DEFAULT_DOF_POS) / ACTION_SCALES, (ACTION_MAX - DEFAULT_DOF_POS) / ACTION_SCALES)
+        actions_clipped = torch.clamp(actions, (ACTION_MIN - DEFAULT_DOF_POS) / self.action_scales, (ACTION_MAX - DEFAULT_DOF_POS) / self.action_scales)
 
         pos_actions_scaled = self.position_joints * actions_clipped * self.cfg.control.action_scale
         # actions_scaled = actions_scaled @ self.actuation_matrix
