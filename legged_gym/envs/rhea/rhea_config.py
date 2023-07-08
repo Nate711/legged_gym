@@ -44,7 +44,7 @@ class RheaRoughCfg( LeggedRobotCfg ):
         send_timeouts = True # send time out information to the algorithm
         episode_length_s = 20 # episode length in seconds
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.4] # x,y,z [m]
+        pos = [0.0, 0.0, 0.225] # x,y,z [m]
         default_joint_angles = { # = target angles [rad] when action = 0.0
             'right_leg': -0.25,
             'right_wheel': 0.0,  # [rad]
@@ -57,6 +57,7 @@ class RheaRoughCfg( LeggedRobotCfg ):
         curriculum = True
         horizontal_scale = 0.1 # [m]
         vertical_scale = 0.0001 # [m]
+        max_init_terrain_level = 0
         # measure_heights = True
         # measured_points_x = []
         # measured_points_y = []
@@ -91,13 +92,14 @@ class RheaRoughCfg( LeggedRobotCfg ):
             'left_leg': 'P', 
             'left_wheel': 'V',
         }
+        joint_friction = 0.1
 
     class asset( LeggedRobotCfg.asset ):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/rhea/urdf/rhea.urdf'
         name = "rhea"
         foot_name = "wheel"
         penalize_contacts_on = []
-        terminate_after_contacts_on = []#["base_link"]
+        terminate_after_contacts_on = ["base_link"]
         self_collisions = 1 # 1 to disable, 0 to enable...bitwise filter
         replace_cylinder_with_capsule = False
   
@@ -130,16 +132,16 @@ class RheaRoughCfg( LeggedRobotCfg ):
         heading_command = False
         deadband = 0.1
         class ranges:
-            lin_vel_x = [-1.0, 1.0] # min max [m/s]
+            lin_vel_x = [-0.5, 0.5] # min max [m/s]
             # lin_vel_x = [0.0, 0.0] # min max [m/s]
             lin_vel_y = [0.0, 0.0]   # min max [m/s]
-            ang_vel_yaw  = [-1.0, 1.0]    # min max [rad/s]
-            # ang_vel_yaw  =[0.0, 0.0]    # min max [rad/s]
+            # ang_vel_yaw  = [-0.5, 0.5]    # min max [rad/s]
+            ang_vel_yaw  =[0.0, 0.0]    # min max [rad/s]
             heading = [0.0, 0.0]
 
     class noise:
         add_noise = True
-        noise_level = 0.1 # scales other values
+        noise_level = 1.0 # scales other values
         class noise_scales:
             dof_pos = 0.01
             dof_vel = 1.5

@@ -52,16 +52,11 @@ MAX_WHEEL_VEL = 30.0
 ACTION_MIN = [MIN_LEG_POS, -MAX_WHEEL_VEL, MIN_LEG_POS, -MAX_WHEEL_VEL]
 ACTION_MAX = [MAX_LEG_POS, MAX_WHEEL_VEL, MAX_LEG_POS, MAX_WHEEL_VEL]
 
-ACTION_SCALE_POS = 1.0
-ACTION_SCALE_VEL = 1.0
-
-# ACTION_SCALES = [ACTION_SCALE_POS, ACTION_SCALE_VEL, ACTION_SCALE_POS, ACTION_SCALE_VEL]
 DEFAULT_DOF_POS = torch.tensor([-0.25, 0.0, -0.25, 0.0], dtype=torch.float, device="cuda", requires_grad=False)
 
 ACTION_MIN = torch.tensor(ACTION_MIN, dtype=torch.float, device="cuda", requires_grad=False)
 ACTION_MAX = torch.tensor(ACTION_MAX, dtype=torch.float, device="cuda", requires_grad=False)
 
-# ACTION_SCALES = torch.tensor(ACTION_SCALES, dtype=torch.float, device="cuda")
 
 RESET_PROJECTED_GRAVITY_Z = np.cos(0.79) # Pitch/roll angle to trigger resets
 
@@ -79,12 +74,15 @@ class Rhea(LeggedRobot):
 
         # self.pitch_offsets = torch_rand_float(PITCH_OFFSET_RANGE[0], PITCH_OFFSET_RANGE[1], (self.num_envs, 1), device=self.device)#.squeeze(1)
 
-        self.action_scales = torch.tensor([ACTION_SCALE_POS, ACTION_SCALE_VEL, ACTION_SCALE_POS, ACTION_SCALE_VEL], dtype=torch.float, device="cuda", requires_grad=False)
+        self.action_scales = torch.tensor([self.cfg.control.action_scale, self.cfg.control.velocity_action_scale, self.cfg.control.action_scale, self.cfg.control.velocity_action_scale], dtype=torch.float, device="cuda", requires_grad=False)
 
         self.command_lower_bound = torch.tensor([self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_y"][0], self.command_ranges["ang_vel_yaw"][0]], dtype=torch.float, device="cuda", requires_grad=False)
         self.command_upper_bound = torch.tensor([self.command_ranges["lin_vel_x"][1], self.command_ranges["lin_vel_y"][1], self.command_ranges["ang_vel_yaw"][1]], dtype=torch.float, device="cuda", requires_grad=False)
         # self.command_lower_bound = torch.tensor([self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_y"][0]], dtype=torch.float, device="cuda", requires_grad=False)
         # self.command_upper_bound = torch.tensor([self.command_ranges["lin_vel_x"][1], self.command_ranges["lin_vel_y"][1]], dtype=torch.float, device="cuda", requires_grad=False)
+
+        self.joint_frictions = torch_rand_float(0, self.cfg.control.joint_friction, (self.num_envs, self.num_dof), device=self.device)
+        self.actuator_strengths = torch_rand_float(0.9, 1.1, (self.num_envs, self.num_dof), device=self.device)
 
         for i in range(self.num_dofs):
             name = self.dof_names[i]
@@ -135,34 +133,35 @@ class Rhea(LeggedRobot):
             self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         else:
             self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-        # Remapping small commands to zero:
-        upper_bound = self.command_upper_bound
-        lower_bound = self.command_lower_bound
-        deadband = self.cfg.commands.deadband
+        self.commands[env_ids, 0] = torch.where(self.commands[env_ids, 0] < 0, torch.zeros_like(self.commands[env_ids, 0]), self.command_ranges["lin_vel_x"][1] * torch.ones_like(self.commands[env_ids, 0]))
+        # # Remapping small commands to zero:
+        # upper_bound = self.command_upper_bound
+        # lower_bound = self.command_lower_bound
+        # deadband = self.cfg.commands.deadband
 
-        # Compute the absolute values
-        abs_commands = torch.abs(self.commands[env_ids, :])
+        # # Compute the absolute values
+        # abs_commands = torch.abs(self.commands[env_ids, :])
 
-        # Create masks for values within the deadband
-        mask_within_deadband = (abs_commands <= deadband)
+        # # Create masks for values within the deadband
+        # mask_within_deadband = (abs_commands <= deadband)
 
-        # For values within deadband, simply set them to 0
-        self.commands[env_ids, :] = torch.where(mask_within_deadband, torch.zeros_like(self.commands[env_ids, :]), self.commands[env_ids, :])
+        # # For values within deadband, simply set them to 0
+        # self.commands[env_ids, :] = torch.where(mask_within_deadband, torch.zeros_like(self.commands[env_ids, :]), self.commands[env_ids, :])
 
-        # Create masks for values outside the deadband
-        mask_outside_deadband = ~mask_within_deadband
+        # # Create masks for values outside the deadband
+        # mask_outside_deadband = ~mask_within_deadband
 
-        # Calculate scale factors for remapping
-        upper_scale = (upper_bound - deadband) / (upper_bound - deadband)
-        lower_scale = (lower_bound + deadband) / (lower_bound + deadband)
+        # # Calculate scale factors for remapping
+        # upper_scale = (upper_bound - deadband) / (upper_bound - deadband)
+        # lower_scale = (lower_bound + deadband) / (lower_bound + deadband)
 
-        # Create masks for values greater than deadband and less than -deadband
-        mask_greater_deadband = self.commands[env_ids, :] > deadband
-        mask_less_neg_deadband = self.commands[env_ids, :] < -deadband
+        # # Create masks for values greater than deadband and less than -deadband
+        # mask_greater_deadband = self.commands[env_ids, :] > deadband
+        # mask_less_neg_deadband = self.commands[env_ids, :] < -deadband
 
-        # Remap the values
-        self.commands[env_ids, :] = torch.where(mask_greater_deadband, (self.commands[env_ids, :] - deadband) * upper_scale, self.commands[env_ids, :])
-        self.commands[env_ids, :] = torch.where(mask_less_neg_deadband, (self.commands[env_ids, :] + deadband) * lower_scale, self.commands[env_ids, :])
+        # # Remap the values
+        # self.commands[env_ids, :] = torch.where(mask_greater_deadband, (self.commands[env_ids, :] - deadband) * upper_scale, self.commands[env_ids, :])
+        # self.commands[env_ids, :] = torch.where(mask_less_neg_deadband, (self.commands[env_ids, :] + deadband) * lower_scale, self.commands[env_ids, :])
 
     def _process_rigid_body_props(self, props, env_id):
             if self.cfg.domain_rand.randomize_base_mass:
@@ -249,6 +248,9 @@ class Rhea(LeggedRobot):
 
         actuator_torques = actuator_position_torques + actuator_velocity_torques
         actuator_torques = torch.clip(actuator_torques, -self.torque_limits, self.torque_limits)
+        actuator_torques *= self.actuator_strengths
+        # actuator_torques -= self.cfg.control.joint_friction * self.dof_vel
+        actuator_torques -= self.joint_frictions * self.dof_vel
 
         return actuator_torques
 
