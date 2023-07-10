@@ -58,7 +58,7 @@ ACTION_MIN = torch.tensor(ACTION_MIN, dtype=torch.float, device="cuda", requires
 ACTION_MAX = torch.tensor(ACTION_MAX, dtype=torch.float, device="cuda", requires_grad=False)
 
 
-RESET_PROJECTED_GRAVITY_Z = np.cos(1.04) # Pitch/roll angle to trigger resets
+RESET_PROJECTED_GRAVITY_Z = 0#np.cos(1.04) # Pitch/roll angle to trigger resets
 
 # PITCH_OFFSET_RANGE = [0.0, 0.0] #[-0.05, 0.05]
 
@@ -81,10 +81,10 @@ class Rhea(LeggedRobot):
         # self.command_lower_bound = torch.tensor([self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_y"][0]], dtype=torch.float, device="cuda", requires_grad=False)
         # self.command_upper_bound = torch.tensor([self.command_ranges["lin_vel_x"][1], self.command_ranges["lin_vel_y"][1]], dtype=torch.float, device="cuda", requires_grad=False)
 
-        self.joint_friction_strengths = torch_rand_float(0.9, 1.1, (self.num_envs, self.num_dof), device=self.device)
-        self.actuator_strengths = torch_rand_float(0.9, 1.1, (self.num_envs, self.num_dof), device=self.device)
-        # self.joint_friction_strengths = torch_rand_float(1.0, 1.0, (self.num_envs, self.num_dof), device=self.device)
-        # self.actuator_strengths = torch_rand_float(1.0, 1.0, (self.num_envs, self.num_dof), device=self.device)
+        # self.joint_friction_strengths = torch_rand_float(0.9, 1.1, (self.num_envs, self.num_dof), device=self.device)
+        # self.actuator_strengths = torch_rand_float(0.9, 1.1, (self.num_envs, self.num_dof), device=self.device)
+        self.joint_friction_strengths = torch_rand_float(1.0, 1.0, (self.num_envs, self.num_dof), device=self.device)
+        self.actuator_strengths = torch_rand_float(1.0, 1.0, (self.num_envs, self.num_dof), device=self.device)
 
         self.delayed_actions = torch.zeros((self.num_envs, self.num_dof, self.cfg.control.delay_range[1] + 1), dtype=torch.float, device=self.device, requires_grad=False)
         self.delayed_action_indices = torch.randint(self.cfg.control.delay_range[0], self.cfg.control.delay_range[1] + 1, (self.num_envs, 1, 1), device="cuda", requires_grad=False)
@@ -230,8 +230,8 @@ class Rhea(LeggedRobot):
 
     def _reward_base_height(self):
         # Penalize base height away from target
-        base_height = torch.mean(self.position_joints * (self.dof_pos - self.default_dof_pos), dim=1)
-        return torch.square(base_height)
+        base_height = torch.mean(self.position_joints * (self.dof_pos - self.cfg.rewards.base_height_target), dim=1)
+        return torch.abs(base_height)
     
     def _reward_alive(self):
         return 1.0

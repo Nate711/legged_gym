@@ -107,10 +107,10 @@ class RheaRoughCfg( LeggedRobotCfg ):
   
     class rewards( LeggedRobotCfg.rewards ):
     #     # soft_dof_pos_limit = 0.9
-    #     # base_height_target = 0.4
+        base_height_target = -0.3
     #     only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
         class scales( LeggedRobotCfg.rewards.scales ):
-            no_fly = 0.1
+            # no_fly = 0.1
             # stand_still = -1.0
             # alive = 1.0
             # termination = -200.
@@ -121,7 +121,7 @@ class RheaRoughCfg( LeggedRobotCfg ):
     #         lin_vel_z = -0.5
             feet_air_time = 0.
     #         orientation = -1.0
-            base_height = 0#-100.0
+            # base_height = -1.0
     #         # dof_pos_limits = -1.
     #         dof_vel = -2.e-6
     #         # ang_vel_xy = -0.0
@@ -155,12 +155,12 @@ class RheaRoughCfg( LeggedRobotCfg ):
 
     class domain_rand( LeggedRobotCfg.domain_rand ):
         randomize_friction = True
-        friction_range = [0.9, 1.1] #[0.75, 1.25]
+        friction_range = [0.75, 1.25]
         randomize_base_mass = True
-        added_mass_range = [-0.1, 0.1]
+        added_mass_range = [-0.25, 0.25]
         randomize_base_com = True
         added_com_range_x = [-0.01, 0.01]
-        added_com_range_y = [0.0, 0.0]
+        added_com_range_y = [-0.01, 0.01]
         added_com_range_z = [-0.01, 0.01]
         randomize_gripper_mass = False
         push_robots = False
