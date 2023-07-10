@@ -53,8 +53,8 @@ class RheaRoughCfg( LeggedRobotCfg ):
         }
 
     class terrain( LeggedRobotCfg.terrain ):
-        mesh_type = 'trimesh'
-        curriculum = True
+        mesh_type = 'plane'#'trimesh'
+        curriculum = False#True
         horizontal_scale = 0.1 # [m]
         vertical_scale = 0.0001 # [m]
         max_init_terrain_level = 0
@@ -64,7 +64,7 @@ class RheaRoughCfg( LeggedRobotCfg ):
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
         # terrain_proportions = [0.5, 0.5, 0, 0, 0]
         # terrain_proportions = [0, 1.0, 0, 0, 0]
-        terrain_proportions = [1.0, 0, 0, 0, 0]
+        #terrain_proportions = [1.0, 0, 0, 0, 0]
 
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
@@ -86,6 +86,8 @@ class RheaRoughCfg( LeggedRobotCfg ):
         velocity_action_scale = 1.0
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 4
+        # delay_range: Range for randomly sampling number of sim DT delay steps for policy actions
+        delay_range = [1, 2]
         joint_control_types = {
             'right_leg': 'P', 
             'right_wheel': 'V',
@@ -108,10 +110,10 @@ class RheaRoughCfg( LeggedRobotCfg ):
     #     # base_height_target = 0.4
     #     only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
         class scales( LeggedRobotCfg.rewards.scales ):
-    #         no_fly = 0.1
+            no_fly = 0.1
             # stand_still = -1.0
-    #         # alive = 1.0
-    #         # termination = -200.
+            # alive = 1.0
+            # termination = -200.
             # tracking_lin_vel = 1.0
             tracking_ang_vel = 0.5
     #         torques = -5.e-6
@@ -132,11 +134,12 @@ class RheaRoughCfg( LeggedRobotCfg ):
         heading_command = False
         deadband = 0.1
         class ranges:
+            # lin_vel_x = [-1.0, 1.0] # min max [m/s]
             lin_vel_x = [-0.5, 0.5] # min max [m/s]
             # lin_vel_x = [0.0, 0.0] # min max [m/s]
             lin_vel_y = [0.0, 0.0]   # min max [m/s]
-            # ang_vel_yaw  = [-0.5, 0.5]    # min max [rad/s]
-            ang_vel_yaw  =[0.0, 0.0]    # min max [rad/s]
+            ang_vel_yaw  = [-0.5, 0.5]    # min max [rad/s]
+            # ang_vel_yaw  =[0.0, 0.0]    # min max [rad/s]
             heading = [0.0, 0.0]
 
     class noise:
@@ -152,13 +155,13 @@ class RheaRoughCfg( LeggedRobotCfg ):
 
     class domain_rand( LeggedRobotCfg.domain_rand ):
         randomize_friction = True
-        friction_range = [0.5, 1.5] #[0.75, 1.25]
+        friction_range = [0.9, 1.1] #[0.75, 1.25]
         randomize_base_mass = True
-        added_mass_range = [-0.5, 0.5]
+        added_mass_range = [-0.1, 0.1]
         randomize_base_com = True
-        added_com_range_x = [-0.025, 0.025]
-        added_com_range_y = [-0.025, 0.025]
-        added_com_range_z = [-0.025, 0.025]
+        added_com_range_x = [-0.01, 0.01]
+        added_com_range_y = [0.0, 0.0]
+        added_com_range_z = [-0.01, 0.01]
         randomize_gripper_mass = False
         push_robots = False
         push_interval_s = 15
@@ -185,6 +188,8 @@ class RheaRoughCfg( LeggedRobotCfg ):
 
 class RheaRoughCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
+        # actor_hidden_dims = [256, 128]
+        # critic_hidden_dims = [256, 128]
         rnn_type = 'lstm'
         rnn_hidden_size = 512
         rnn_num_layers = 1

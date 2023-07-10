@@ -58,7 +58,7 @@ ACTION_MIN = torch.tensor(ACTION_MIN, dtype=torch.float, device="cuda", requires
 ACTION_MAX = torch.tensor(ACTION_MAX, dtype=torch.float, device="cuda", requires_grad=False)
 
 
-RESET_PROJECTED_GRAVITY_Z = np.cos(0.79) # Pitch/roll angle to trigger resets
+RESET_PROJECTED_GRAVITY_Z = np.cos(1.04) # Pitch/roll angle to trigger resets
 
 # PITCH_OFFSET_RANGE = [0.0, 0.0] #[-0.05, 0.05]
 
@@ -81,8 +81,14 @@ class Rhea(LeggedRobot):
         # self.command_lower_bound = torch.tensor([self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_y"][0]], dtype=torch.float, device="cuda", requires_grad=False)
         # self.command_upper_bound = torch.tensor([self.command_ranges["lin_vel_x"][1], self.command_ranges["lin_vel_y"][1]], dtype=torch.float, device="cuda", requires_grad=False)
 
-        self.joint_frictions = torch_rand_float(0, self.cfg.control.joint_friction, (self.num_envs, self.num_dof), device=self.device)
+        self.joint_friction_strengths = torch_rand_float(0.9, 1.1, (self.num_envs, self.num_dof), device=self.device)
         self.actuator_strengths = torch_rand_float(0.9, 1.1, (self.num_envs, self.num_dof), device=self.device)
+        # self.joint_friction_strengths = torch_rand_float(1.0, 1.0, (self.num_envs, self.num_dof), device=self.device)
+        # self.actuator_strengths = torch_rand_float(1.0, 1.0, (self.num_envs, self.num_dof), device=self.device)
+
+        self.delayed_actions = torch.zeros((self.num_envs, self.num_dof, self.cfg.control.delay_range[1] + 1), dtype=torch.float, device=self.device, requires_grad=False)
+        self.delayed_action_indices = torch.randint(self.cfg.control.delay_range[0], self.cfg.control.delay_range[1] + 1, (self.num_envs, 1, 1), device="cuda", requires_grad=False)
+        self.delayed_action_indices = self.delayed_action_indices.expand(self.num_envs, self.num_dof, 1)
 
         for i in range(self.num_dofs):
             name = self.dof_names[i]
@@ -133,7 +139,10 @@ class Rhea(LeggedRobot):
             self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
         else:
             self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-        self.commands[env_ids, 0] = torch.where(self.commands[env_ids, 0] < 0, torch.zeros_like(self.commands[env_ids, 0]), self.command_ranges["lin_vel_x"][1] * torch.ones_like(self.commands[env_ids, 0]))
+        self.commands[env_ids, :] *= (torch.norm(self.commands[env_ids, :], dim=1) > self.cfg.commands.deadband).unsqueeze(1)
+
+        # self.commands[env_ids, 0] = torch.where(self.commands[env_ids, 0] < 0, torch.zeros_like(self.commands[env_ids, 0]), self.command_ranges["lin_vel_x"][1] * torch.ones_like(self.commands[env_ids, 0]))
+
         # # Remapping small commands to zero:
         # upper_bound = self.command_upper_bound
         # lower_bound = self.command_lower_bound
@@ -214,7 +223,7 @@ class Rhea(LeggedRobot):
     def _reward_no_fly(self):
         contacts = self.contact_forces[:, self.feet_indices, 2] > 0.1
         # sum up the number of contacts (each foot should have at least one)
-        both_feet_contact = torch.sum(1.*contacts, dim=1) == 2
+        both_feet_contact = torch.sum(1.*contacts, dim=1) >= 2
 
         # return 1 if both feet have contact, 0 otherwise
         return 1.*both_feet_contact
@@ -236,21 +245,25 @@ class Rhea(LeggedRobot):
         # actions_scaled = actions_scaled @ self.actuation_matrix
         velocity_actions_scaled = self.velocity_joints * actions_clipped * self.cfg.control.velocity_action_scale
 
-        actions_scaled  = pos_actions_scaled + velocity_actions_scaled
+        actions_scaled = pos_actions_scaled + velocity_actions_scaled
+
+        current_delayed_actions = torch.gather(self.delayed_actions, -1, self.delayed_action_indices).squeeze(-1)
+        self.delayed_actions[:,:,1:] = self.delayed_actions[:,:,:-1]
+        self.delayed_actions[:,:,0] = actions_scaled
 
         # print(f'actions_scaled: {actions_scaled.size()}, default dof: {self.default_dof_pos.size()}, dgains: {self.d_gains.size()}, dof vel: {self.dof_vel.size()}')
-        actuator_position_torques = self.p_gains*(actions_scaled + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel
+        actuator_position_torques = self.p_gains*(current_delayed_actions + self.default_dof_pos - self.dof_pos) - self.d_gains*self.dof_vel
         actuator_position_torques = self.position_joints * actuator_position_torques
 
         # velocity_torques = self.p_gains*(actions_scaled - self.dof_vel) - self.d_gains*(self.dof_vel - self.last_dof_vel)/self.sim_params.dt
-        actuator_velocity_torques = self.d_gains*(velocity_actions_scaled - self.dof_vel)
+        actuator_velocity_torques = self.d_gains*(current_delayed_actions - self.dof_vel)
         actuator_velocity_torques = self.velocity_joints * actuator_velocity_torques
 
         actuator_torques = actuator_position_torques + actuator_velocity_torques
         actuator_torques = torch.clip(actuator_torques, -self.torque_limits, self.torque_limits)
         actuator_torques *= self.actuator_strengths
         # actuator_torques -= self.cfg.control.joint_friction * self.dof_vel
-        actuator_torques -= self.joint_frictions * self.dof_vel
+        actuator_torques -= self.cfg.control.joint_friction * self.joint_friction_strengths * self.dof_vel
 
         return actuator_torques
 
