@@ -4,9 +4,9 @@
 
     <link name="base_link">
       <inertial>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="3.0"/>
-        <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+        <origin xyz="-0.025 0 -0.025" rpy="0 0 0"/>
+        <mass value="5.0"/>
+        <inertia ixx="0.02" ixy="0" ixz="0" iyy="0.02" iyz="0" izz="0.02"/>
       </inertial>
       <visual name="rhea_mesh">
         <origin xyz="0 0 0" rpy="0 0 0"/>
