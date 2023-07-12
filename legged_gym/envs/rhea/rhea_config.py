@@ -53,20 +53,22 @@ class RheaRoughCfg( LeggedRobotCfg ):
         }
 
     class terrain( LeggedRobotCfg.terrain ):
-        mesh_type = 'plane'
-        # mesh_type = 'trimesh'
+        # mesh_type = 'plane'
+        mesh_type = 'trimesh'
         curriculum = True
-        # horizontal_scale = 0.4 # [m]
-        # vertical_scale = 0.0001 # [m]
-        max_init_terrain_level = 0
+        horizontal_scale = 0.05 # [m]
+        vertical_scale = 0.0025 # [m]
+        # max_init_terrain_level = 0
         # measure_heights = True
         # measured_points_x = []
         # measured_points_y = []
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
-        # terrain_proportions = [0.5, 0.5, 0, 0, 0]
+        terrain_proportions = [0.5, 0.5, 0, 0, 0]
         # terrain_proportions = [0, 1.0, 0, 0, 0]
-        #terrain_proportions = [1.0, 0, 0, 0, 0]
-        terrain_proportions = [0.2, 0.2, 0, 0, 0.6]
+        # terrain_proportions = [1.0, 0, 0, 0, 0]
+        # terrain_proportions = [0.2, 0.2, 0, 0, 0.6]
+        terrain_length = 4.
+        terrain_width = 4.
 
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
