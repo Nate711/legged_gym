@@ -53,10 +53,11 @@ class RheaRoughCfg( LeggedRobotCfg ):
         }
 
     class terrain( LeggedRobotCfg.terrain ):
-        mesh_type = 'plane'#'trimesh'
-        curriculum = False#True
-        horizontal_scale = 0.1 # [m]
-        vertical_scale = 0.0001 # [m]
+        mesh_type = 'plane'
+        # mesh_type = 'trimesh'
+        curriculum = True
+        # horizontal_scale = 0.4 # [m]
+        # vertical_scale = 0.0001 # [m]
         max_init_terrain_level = 0
         # measure_heights = True
         # measured_points_x = []
@@ -65,6 +66,7 @@ class RheaRoughCfg( LeggedRobotCfg ):
         # terrain_proportions = [0.5, 0.5, 0, 0, 0]
         # terrain_proportions = [0, 1.0, 0, 0, 0]
         #terrain_proportions = [1.0, 0, 0, 0, 0]
+        terrain_proportions = [0.2, 0.2, 0, 0, 0.6]
 
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
@@ -115,12 +117,12 @@ class RheaRoughCfg( LeggedRobotCfg ):
             # alive = 1.0
             # termination = -200.
             # tracking_lin_vel = 1.0
-            tracking_ang_vel = 0.5
+            # tracking_ang_vel = 0.5
     #         torques = -5.e-6
     #         dof_acc = -2.e-7
     #         lin_vel_z = -0.5
             feet_air_time = 0.
-    #         orientation = -1.0
+            orientation = -1.0
             # base_height = -1.0
     #         # dof_pos_limits = -1.
     #         dof_vel = -2.e-6
@@ -132,7 +134,7 @@ class RheaRoughCfg( LeggedRobotCfg ):
         num_commands = 3# default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         resampling_time = 10. # time before command are changed[s]
         heading_command = False
-        deadband = 0.1
+        deadband = 0.2
         class ranges:
             # lin_vel_x = [-1.0, 1.0] # min max [m/s]
             lin_vel_x = [-0.5, 0.5] # min max [m/s]
@@ -147,7 +149,7 @@ class RheaRoughCfg( LeggedRobotCfg ):
         noise_level = 1.0 # scales other values
         class noise_scales:
             dof_pos = 0.01
-            dof_vel = 1.5
+            dof_vel = 0.1
             lin_vel = 0.1
             ang_vel = 0.2
             gravity = 0.05
