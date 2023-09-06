@@ -30,73 +30,93 @@
 
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 
-LEG_KP = 60.0 / (0.16 * 2)
-LEG_KD = 2.0 / (0.16 * 2)
+LEG_KP = 40.0
+LEG_KD = 4.0
 WHEEL_KD = 0.5
 
 class RheaRoughCfg( LeggedRobotCfg ):
     class env:
-        num_envs = 4096#*4
-        num_observations = 21
+        num_envs = 4096
+        num_observations = 30
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
-        num_actions = 4
+        num_actions = 6
         env_spacing = 3.  # not used with heightfields/trimeshes 
         send_timeouts = True # send time out information to the algorithm
         episode_length_s = 20 # episode length in seconds
     class init_state( LeggedRobotCfg.init_state ):
-        pos = [0.0, 0.0, 0.225] # x,y,z [m]
+        pos = [0.0, 0.0, 0.5] # x,y,z [m]
         default_joint_angles = { # = target angles [rad] when action = 0.0
-            'right_leg': -0.25,
-            'right_wheel': 0.0,  # [rad]
-            'left_leg': -0.25,
+            'left_hip': 0.75,
+            'left_knee': -1.5,
             'left_wheel': 0.0,  # [rad]
+            'right_hip': -0.75,
+            'right_knee': 1.5,
+            'right_wheel': 0.0,  # [rad]
         }
 
     class terrain( LeggedRobotCfg.terrain ):
         # mesh_type = 'plane'
         mesh_type = 'trimesh'
         curriculum = True
-        horizontal_scale = 0.05 # [m]
-        vertical_scale = 0.0025 # [m]
+        # horizontal_scale = 0.05 # [m]
+        # vertical_scale = 0.0025 # [m]
         # max_init_terrain_level = 0
         # measure_heights = True
         # measured_points_x = []
         # measured_points_y = []
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
-        terrain_proportions = [0.5, 0.5, 0, 0, 0]
+        # terrain_proportions = [0.5, 0.5, 0, 0, 0]
         # terrain_proportions = [0, 1.0, 0, 0, 0]
         # terrain_proportions = [1.0, 0, 0, 0, 0]
-        # terrain_proportions = [0.2, 0.2, 0, 0, 0.6]
-        terrain_length = 4.
-        terrain_width = 4.
+        # terrain_proportions = [0.3, 0.3, 0, 0, 0.4]
+        terrain_proportions = [0, 0, 0, 0, 1.0]
+        # terrain_length = 4.
+        # terrain_width = 4.
+        slope_treshold = 100.0
+        # Intentionally set friction to 0 so it only uses the wheel friction
+        static_friction = 0.0
+        dynamic_friction = 0.0
 
     class control( LeggedRobotCfg.control ):
         # PD Drive parameters:
-        control_type = 'P'
+        control_type = 'V'
         stiffness = {
-            'right_leg': LEG_KP, 
-            'right_wheel': 0.0,
-            'left_leg': LEG_KP,
-            'left_wheel': 0.0,
+            'left_hip': LEG_KP,
+            'left_knee': LEG_KP,
+            'left_wheel': WHEEL_KD,
+            'right_hip': LEG_KP, 
+            'right_knee': LEG_KP, 
+            'right_wheel': WHEEL_KD,
         } # [N*m/rad]
         damping = {
-            'right_leg': LEG_KD, 
-            'right_wheel': WHEEL_KD,
-            'left_leg': LEG_KD,
-            'left_wheel': WHEEL_KD,
+            'left_hip': LEG_KD,
+            'left_knee': LEG_KD,
+            'left_wheel': 0.0,
+            'right_hip': LEG_KD, 
+            'right_knee': LEG_KD, 
+            'right_wheel': 0.0,
         }     # [N*m*s/rad]
         # action scale: target angle = actionScale * action + defaultAngle
-        action_scale = 0.1
-        velocity_action_scale = 1.0
+        action_scale = 1.0
         # decimation: Number of control action updates @ sim DT per policy DT
         decimation = 4
         # delay_range: Range for randomly sampling number of sim DT delay steps for policy actions
         delay_range = [1, 2]
         joint_control_types = {
-            'right_leg': 'P', 
-            'right_wheel': 'V',
-            'left_leg': 'P', 
+            'left_hip': 'P', 
+            'left_knee': 'P', 
             'left_wheel': 'V',
+            'right_hip': 'P', 
+            'right_knee': 'P', 
+            'right_wheel': 'V',
+        }
+        action_scales = {
+            'left_hip': 1.0,
+            'left_knee': 1.0,
+            'left_wheel': 10.0,
+            'right_hip': 1.0,
+            'right_knee': 1.0,
+            'right_wheel': 10.0,
         }
         joint_friction = 0.1
 
@@ -104,14 +124,15 @@ class RheaRoughCfg( LeggedRobotCfg ):
         file = '{LEGGED_GYM_ROOT_DIR}/resources/robots/rhea/urdf/rhea.urdf'
         name = "rhea"
         foot_name = "wheel"
-        penalize_contacts_on = []
+        penalize_contacts_on = ["left_hip", "left_knee", "right_hip", "right_knee"]
         terminate_after_contacts_on = ["base_link"]
-        self_collisions = 1 # 1 to disable, 0 to enable...bitwise filter
+        # self_collisions = 1 # 1 to disable, 0 to enable...bitwise filter
         replace_cylinder_with_capsule = False
   
     class rewards( LeggedRobotCfg.rewards ):
     #     # soft_dof_pos_limit = 0.9
-        base_height_target = -0.3
+        # only_positive_rewards = False
+        # base_height_target = 0.5
     #     only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
         class scales( LeggedRobotCfg.rewards.scales ):
             # no_fly = 0.1
@@ -120,12 +141,14 @@ class RheaRoughCfg( LeggedRobotCfg ):
             # termination = -200.
             # tracking_lin_vel = 1.0
             # tracking_ang_vel = 0.5
-    #         torques = -5.e-6
+            # torques = -1.e-3
     #         dof_acc = -2.e-7
-    #         lin_vel_z = -0.5
+            # lin_vel_z = -0.1
             feet_air_time = 0.
-            orientation = -1.0
+            # orientation = -1.0
+            # action_rate = -0.01
             # base_height = -1.0
+            symmetry = -0.1
     #         # dof_pos_limits = -1.
     #         dof_vel = -2.e-6
     #         # ang_vel_xy = -0.0
@@ -133,18 +156,18 @@ class RheaRoughCfg( LeggedRobotCfg ):
     #         # action_rate = -0.01
 
     class commands( LeggedRobotCfg.commands ):
-        num_commands = 3# default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
+        num_commands = 4# default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         resampling_time = 10. # time before command are changed[s]
-        heading_command = False
-        deadband = 0.2
+        heading_command = True
+        deadband = 0.1
         class ranges:
             # lin_vel_x = [-1.0, 1.0] # min max [m/s]
             lin_vel_x = [-0.5, 0.5] # min max [m/s]
             # lin_vel_x = [0.0, 0.0] # min max [m/s]
             lin_vel_y = [0.0, 0.0]   # min max [m/s]
-            ang_vel_yaw  = [-0.5, 0.5]    # min max [rad/s]
-            # ang_vel_yaw  =[0.0, 0.0]    # min max [rad/s]
-            heading = [0.0, 0.0]
+            # ang_vel_yaw  = [-0.5, 0.5]    # min max [rad/s]
+            ang_vel_yaw  =[1.0, 1.0]    # min max [rad/s]
+            heading = [-3.14, 3.14]
 
     class noise:
         add_noise = True
@@ -171,24 +194,24 @@ class RheaRoughCfg( LeggedRobotCfg ):
         push_interval_s = 15
         max_push_vel_xy = 0.1
 
-    class sim:
-        dt =  0.005
-        substeps = 1
-        gravity = [0., 0. ,-9.81]  # [m/s^2]
-        up_axis = 1  # 0 is y, 1 is z
+    # class sim:
+    #     dt =  0.005
+        # substeps = 1
+        # gravity = [0., 0. ,-9.81]  # [m/s^2]
+        # up_axis = 1  # 0 is y, 1 is z
 
-        class physx:
-            num_threads = 10
-            solver_type = 1  # 0: pgs, 1: tgs
-            num_position_iterations = 4
-            num_velocity_iterations = 0
-            contact_offset = 0.01  # [m]
-            rest_offset = 0.0   # [m]
-            bounce_threshold_velocity = 0.5 #0.5 [m/s]
-            max_depenetration_velocity = 1.0
-            max_gpu_contact_pairs = 2**23 #2**24 -> needed for 8000 envs and more
-            default_buffer_size_multiplier = 5
-            contact_collection = 2 # 0: never, 1: last sub-step, 2: all sub-steps (default=2)
+        # class physx:
+        #     num_threads = 10
+        #     solver_type = 1  # 0: pgs, 1: tgs
+        #     num_position_iterations = 4
+        #     num_velocity_iterations = 0
+        #     contact_offset = 0.01  # [m]
+        #     rest_offset = 0.0   # [m]
+        #     bounce_threshold_velocity = 0.5 #0.5 [m/s]
+        #     max_depenetration_velocity = 1.0
+        #     max_gpu_contact_pairs = 2**23 #2**24 -> needed for 8000 envs and more
+        #     default_buffer_size_multiplier = 5
+        #     contact_collection = 2 # 0: never, 1: last sub-step, 2: all sub-steps (default=2)
 
 class RheaRoughCfgPPO( LeggedRobotCfgPPO ):
     class policy( LeggedRobotCfgPPO.policy ):
