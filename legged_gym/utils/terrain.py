@@ -112,7 +112,8 @@ class Terrain:
                                 length=self.width_per_env_pixels,
                                 vertical_scale=self.cfg.vertical_scale,
                                 horizontal_scale=self.cfg.horizontal_scale)
-        slope = difficulty * 0.2 #0.4
+        # slope = difficulty * 0.4
+        slope = difficulty * 0.2
         step_height = 0.01 * difficulty
         # discrete_obstacles_height = 0.05 + difficulty * 0.01
         discrete_obstacles_height = 0.0125 + difficulty * 0.0025
@@ -123,11 +124,13 @@ class Terrain:
         if choice < self.proportions[0]:
             if choice < self.proportions[0]/ 2:
                 slope *= -1
-            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=1.5)#3.)
+            # terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
+            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=1.5)
         elif choice < self.proportions[1]:
-            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=1.5)#3.)
+            # terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
             # terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005, downsampled_scale=0.2)
-            terrain_utils.random_uniform_terrain(terrain, min_height=-0.025, max_height=0.025, step=0.0025, downsampled_scale=0.1)
+            terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=1.5)
+            terrain_utils.random_uniform_terrain(terrain, min_height=-0.025, max_height=0.025, step=0.005, downsampled_scale=0.1)
         elif choice < self.proportions[3]:
             if choice<self.proportions[2]:
                 step_height *= -1
