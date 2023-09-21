@@ -93,10 +93,15 @@ class PupperRoughCfg( LeggedRobotCfg ):
         class scales( LeggedRobotCfg.rewards.scales ):
             torques = -0.0002
             # dof_pos_limits = -0.1
-            # ang_vel_xy = -0.005
-            # action_rate = -0.001
-            # dof_acc = -2.5e-8
-            # lin_vel_z = -0.1
+    class camera:
+        h_res = 32
+        v_res = 32
+        h_fov = 1.57
+        v_fov = 1.57
+        num_sample_iters = 32
+        near = 0.1
+        sample_step = 0.01
+        tolerance = 0.01
 
 class PupperRoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):
