@@ -48,8 +48,8 @@ class Pupper(LeggedRobot):
             # Generate the cone map
             # For each pixel of the terrain map, calculate the slope of the line to every other pixel, and store the maximum slope
             H, W = self.height_samples.shape
-            x_coords = torch.arange(W, dtype=torch.int, device=self.device)
-            y_coords = torch.arange(H, dtype=torch.int, device=self.device)
+            y_coords = torch.arange(W, dtype=torch.int, device=self.device)
+            x_coords = torch.arange(H, dtype=torch.int, device=self.device)
             xx, yy = torch.meshgrid(x_coords, y_coords)
 
             self.cone_map = torch.zeros_like(self.height_samples).float()
