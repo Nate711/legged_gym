@@ -48,24 +48,26 @@ class Pupper(LeggedRobot):
             # Generate the cone map
             # For each pixel of the terrain map, calculate the slope of the line to every other pixel, and store the maximum slope
             H, W = self.height_samples.shape
-            y_coords = torch.arange(W, dtype=torch.int, device=self.device)
-            x_coords = torch.arange(H, dtype=torch.int, device=self.device)
+            y_coords = torch.arange(2 * W - 1, dtype=torch.int, device=self.device)
+            x_coords = torch.arange(2 * H - 1, dtype=torch.int, device=self.device)
             xx, yy = torch.meshgrid(x_coords, y_coords)
+
+            # Precalculate a grid of inverse distances to the center (H-1, W-1) that we can slice into
+            inverse_distances = 1 / torch.sqrt(torch.square(xx - (H - 1)) + torch.square(yy - (W - 1)))
+            # Set the center to 0 so that we ignore the distance from the current pixel to itself
+            inverse_distances[H - 1, W - 1] = 0
 
             self.cone_map = torch.zeros_like(self.height_samples).float()
 
             # Loop through each pixel in the original map
             for i in range(self.height_samples.shape[0]):
-                # print(i)
                 print("Generating cone map: {:.2f}%".format(100.0 * i / self.height_samples.shape[0]))
                 for j in range(self.height_samples.shape[1]):
                     # Calculate the slope to each pixel
-                    height_diffs = self.height_samples - self.height_samples[i, j]
-                    x_diffs = i - xx
-                    y_diffs = j - yy
-                    distances = torch.sqrt(x_diffs**2 + y_diffs**2)
-                    distances[distances == 0] = 1
-                    slopes = height_diffs / distances
+                    # Slice into the precalculated inverse distances
+                    # When (i,j)=(0,0), we should get the slice [H-1:, W-1:]
+                    # When (i,j)=(H-1,W-1), we should get the slice [:H, :W]
+                    slopes = (self.height_samples - self.height_samples[i, j]) * inverse_distances[H - 1 - i:H + H - 1 - i, W - 1 - j:W + W - 1 - j]
                     self.cone_map[i, j] = torch.max(slopes)
 
             self.cone_map *= self.terrain.cfg.vertical_scale / self.terrain.cfg.horizontal_scale
