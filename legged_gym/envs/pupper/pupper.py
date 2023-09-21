@@ -113,20 +113,22 @@ class Pupper(LeggedRobot):
             cone_map_values = cone_map_values.view(self.num_envs, -1)
 
             # Use the cone map to figure out the step size
-            step_size = torch.clamp((pixel_sample_points[:, :, 2] - heights) / (cone_map_values - pixel_directions_xy_normalized[:, :, 2]), min=self.cfg.camera.sample_step)
+            step_size = (pixel_sample_points[:, :, 2] - heights) / (cone_map_values - pixel_directions_xy_normalized[:, :, 2])
 
-            # Determine which points are above the height
-            above_height = pixel_sample_points[:, :, 2] - self.cfg.camera.tolerance > heights
-            
-            # Update the sample points which are above the height
-            pixel_sample_points[above_height] += step_size[above_height].unsqueeze(-1) * pixel_directions_xy_normalized[above_height]
-            self.pixel_depths[above_height] += step_size[above_height]
-        
+            # Continue the ray if it is not pointing at nothing and still above the terrain
+            continue_pixels = (pixel_sample_points[:, :, 2] - self.cfg.camera.tolerance > heights) & (step_size > self.cfg.camera.tolerance)
+
+            pixel_sample_points[continue_pixels] += step_size[continue_pixels].unsqueeze(-1) * pixel_directions_xy_normalized[continue_pixels]
+            self.pixel_depths[continue_pixels] += step_size[continue_pixels]
+
         # import cv2
-        # img_idx = 10
+        # img_idx = 15
         # above_height = pixel_sample_points[:, :, 2] - self.cfg.camera.tolerance > heights
-        # valid_pixels = ~np.flip(above_height[img_idx].view(self.cfg.camera.h_res, self.cfg.camera.v_res).cpu().numpy().T)
+        # blank_pixels = (step_size < 0) & above_height
+        # valid_pixels = np.flip((~blank_pixels & ~above_height)[img_idx].view(self.cfg.camera.h_res, self.cfg.camera.v_res).cpu().numpy().T)
 
+        # if valid_pixels.sum() == 0:
+        #     return
         # # Depth
         # img = self.pixel_depths[img_idx].view(self.cfg.camera.h_res, self.cfg.camera.v_res).cpu().numpy().T
         # img = np.flip(img)

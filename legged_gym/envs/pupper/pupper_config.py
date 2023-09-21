@@ -99,7 +99,7 @@ class PupperRoughCfg( LeggedRobotCfg ):
         h_fov = 1.57
         v_fov = 1.57
         num_sample_iters = 32
-        near = 0.1
+        near = 0.0
         sample_step = 0.01
         tolerance = 0.01
 
